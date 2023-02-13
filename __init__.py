@@ -39,41 +39,40 @@ class SEQUENCER_PT_bligify(bpy.types.Panel):
     def draw(self, context):
         scene = context.scene
         layout = self.layout
+        layout.use_property_decorate = False
 
         box = layout.box()
-        row = box.row()
-        row.prop(scene, "gif_disposal", text="Disposal", icon="FAKE_USER_OFF")
-        row = box.row()
-        row.prop(scene, "gif_dither", text="Dither", icon="STRANDS")
-        row = box.row()
-        row.prop(scene, "gif_color_method", text="Filter", icon="FILTER")
-        row = box.row()
-        row.prop(scene, "gif_color_map", text="Map", icon="NODE_TEXTURE")
-        special_row = box.row()
-        special_row.prop(scene, "gif_mapfile", text="Map File")
-        if scene.gif_color_map == "custom":
-            special_row.enabled = True
-        else:
-            special_row.enabled = False
-        row = box.row()
-        row.prop(scene, "gif_careful", text="Careful")
-        row.prop(scene, "gif_optimize", text="Optimize")
-        row = box.row()
-        row.prop(scene, "gif_colors", text="Colors")
-        row.prop(scene, "gif_loop_count", text="Loop")
+        box.use_property_split = True
+        box.prop(scene, "gif_disposal", text="Disposal", icon="FAKE_USER_OFF")
+        box.prop(scene, "gif_dither", text="Dither", icon="STRANDS")
+        box.prop(scene, "gif_color_method", text="Filter", icon="FILTER")
+        box.prop(scene, "gif_color_map", text="Map", icon="NODE_TEXTURE")
+
+        col = box.column()
+        col.active = scene.gif_color_map == "custom"
+        col.prop(scene, "gif_mapfile", text="Map File")
+
+        box.prop(scene, "gif_optimize", text="Optimize")
+        box.prop(scene, "gif_colors", text="Colors")
+        box.prop(scene, "gif_loop_count", text="Loop")
+
+        row = box.row(heading="Transparency")
+        row.prop(scene, "gif_transparent", text="")
+        sub = row.column()
+        sub.active = scene.gif_transparent
+        sub.prop(scene, "gif_transparent_color", text="")
+
+        box.prop(scene, "gif_careful", text="Careful")
+
         row = layout.row()
         row.prop(scene, "gif_dither_conversion", text="Dither Conversion")
-        row = layout.row()
         row.prop(scene, "delete_frames", text="Cleanup on Completion")
         row = layout.row()
-        row.operator("bligify.fps_adjust",
-                     icon="MOD_TIME")
-        row.prop(scene, "fps_adjustment", text="")
+        row.operator("bligify.fps_adjust", icon="MOD_TIME")
+        row.prop(scene, "fps_adjustment", text="FPS")
         row = layout.row()
-        row.operator("bligify.render_gif",
-                     icon="RENDER_ANIMATION")
-        row.operator("bligify.import_gif",
-                     icon="FILE_FOLDER")
+        row.operator("bligify.render_gif", icon="RENDER_ANIMATION")
+        row.operator("bligify.import_gif", icon="FILE_FOLDER")
 
 
 def make_absolute_gifsicle_path(context):
@@ -135,7 +134,7 @@ def initprop():
         name="Disposal Method",
         items=disposal_options,
         description="Set the disposal method",
-        default="background"
+        default="background",
         )
 
     dither_methods = [
@@ -148,14 +147,14 @@ def initprop():
         ("ordered", "Ordered", "A good ordered dithering algorithm"),
         ("halftone", "Halftone", "For special effects"),
         ("squarehalftone", "Square Halftone", "For special effects"),
-        ("diagnoal", "Diagnoal", "For special effects")
+        ("diagnoal", "Diagnoal", "For special effects"),
         ]
 
     bpy.types.Scene.gif_dither = bpy.props.EnumProperty(
         name="Dither Method",
         items=dither_methods,
         description="Set the dithering method",
-        default="none"
+        default="none",
         )
 
     color_methods = [
@@ -168,7 +167,7 @@ def initprop():
         name="Color Reduction Method",
         items=color_methods,
         description="Determine how a smaller colormap is chosen",
-        default="diversity"
+        default="diversity",
         )
 
     color_maps = [
@@ -176,7 +175,7 @@ def initprop():
         ("web", "Web", 'Use the 216-color "Web-safe palette"'),
         ("gray", "Grayscale", "Use grayscale color map"),
         ("bw", "Black & White", "Use Black and White color map"),
-        ("custom", "Custom", "Use a custom color map")
+        ("custom", "Custom", "Use a custom color map"),
     ]
 
     bpy.types.Scene.gif_color_map = bpy.props.EnumProperty(
@@ -195,48 +194,64 @@ def initprop():
     bpy.types.Scene.gif_careful = bpy.props.BoolProperty(
         name="Careful",
         description="Create a slightly larger GIF, but avoid bugs with some Java and Internet Explorer versions",
-        default=True
+        default=True,
         )
 
     bpy.types.Scene.gif_optimize = bpy.props.IntProperty(
         name="Optimization Method",
-        description="Optimization Method\n\n1 store only changed portion of each image (fast)\n2 use transparency to shrink the file further\n3 try several methods (slower, but smaller file)",
+        description="Optimization Method\n\n0 store entire frames as images (large files)\n1 store only changed portion of each image (fast)\n2 use transparency to shrink the file further\n3 try several methods (slower, but smaller file)",
         default=3,
+        min=0,
         max=3,
-        min=1,
         )
 
     bpy.types.Scene.gif_colors = bpy.props.IntProperty(
         name="GIF Colors",
         description="Number of colors used in the GIF",
         default=256,
-        max=256,
         min=2,
+        max=256,
         )
 
     bpy.types.Scene.gif_loop_count = bpy.props.IntProperty(
         name="Loop Count",
         description="Loop x number of times; 0 = loop forever",
         default=0,
-        min=0
+        min=0,
         )
+
+    bpy.types.Scene.gif_transparent = bpy.props.BoolProperty(
+        name="Transparent",
+        description="Add transparency to the GIF",
+        default=False,
+    )
+
+    bpy.types.Scene.gif_transparent_color = bpy.props.FloatVectorProperty(
+        name="Transparent Color",
+        description="If \"Transparent\" is checked, this color will be marked as transparent in the output GIF",
+        size=3,
+        subtype="COLOR",
+        default=(0, 0, 0),
+        min=0,
+        max=1,
+    )
 
     bpy.types.Scene.fps_adjustment = bpy.props.IntProperty(
         name="FPS Adjustment",
         description="Set the new FPS that will be used after running FPS Adjust",
         default=10,
+        min=1,
         max=1000,
-        min=1
         )
 
     bpy.types.Scene.gif_dither_conversion = bpy.props.BoolProperty(
         description="Add dither to PNGs as they are converted to GIFs\n\nMay or may not make your animated GIF look better.",
-        default=False
+        default=False,
     )
 
     bpy.types.Scene.delete_frames = bpy.props.BoolProperty(
         description="Delete the PNG frames folder after GIF is complete",
-        default=True
+        default=True,
     )
 
 

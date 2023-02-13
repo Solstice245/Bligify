@@ -123,7 +123,6 @@ def is_independent(all_strips, strip):
                 p_end = potential_relative.frame_final_end
 
                 if p_start >= start and p_start < end:
-                    print(p_start, start, p_end, end)
                     return False
                 elif p_end > start and p_end <= end:
                     return False
